@@ -1,5 +1,11 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 
+const pdfjsLib = window['pdfjs-dist/build/pdf'];
+if (pdfjsLib) {
+  pdfjsLib.GlobalWorkerOptions.workerSrc =
+    'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+}
+
 const SECTIONS = [
   { id: "implementation", label: "Implementation Plan", icon: "🗺️" },
   { id: "legal", label: "Legal & Compliance", icon: "⚖️" },
@@ -38,21 +44,23 @@ function parseMarkdown(text) {
     );
 }
 
-import * as pdfjsLib from 'pdfjs-dist';
-pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.0.379/pdf.worker.min.js`;
-
 async function readFileAsText(file) {
   if (file.type === "application/pdf") {
-    const arrayBuffer = await file.arrayBuffer();
-    const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
-    let fullText = "";
-    for (let i = 1; i <= pdf.numPages; i++) {
-      const page = await pdf.getPage(i);
-      const content = await page.getTextContent();
-      const pageText = content.items.map((item) => item.str).join(" ");
-      fullText += `\n[Page ${i}]\n${pageText}`;
+    try {
+      const lib = window['pdfjs-dist/build/pdf'];
+      const arrayBuffer = await file.arrayBuffer();
+      const pdf = await lib.getDocument({ data: arrayBuffer }).promise;
+      let fullText = "";
+      for (let i = 1; i <= pdf.numPages; i++) {
+        const page = await pdf.getPage(i);
+        const content = await page.getTextContent();
+        const pageText = content.items.map((item) => item.str).join(" ");
+        fullText += `\n[Page ${i}]\n${pageText}`;
+      }
+      return `[PDF: ${file.name}]\n${fullText}`;
+    } catch (err) {
+      return `[PDF: ${file.name} — could not extract text: ${err.message}]`;
     }
-    return `[PDF: ${file.name}]\n${fullText}`;
   } else {
     const reader = new FileReader();
     return new Promise((resolve, reject) => {
@@ -144,21 +152,21 @@ export default function StartupAdvisor() {
         userMessage,
       ];
 
-const response = await fetch("https://api.anthropic.com/v1/messages", {
-  method: "POST",
-  headers: {
-    "Content-Type": "application/json",
-    "x-api-key": import.meta.env.VITE_ANTHROPIC_API_KEY,
-    "anthropic-version": "2023-06-01",
-    "anthropic-dangerous-direct-browser-access": "true",
-  },
-  body: JSON.stringify({
-    model: "claude-sonnet-4-20250514",
-    max_tokens: 1000,
-    system: SYSTEM_PROMPT,
-    messages: apiMessages,
-  }),
-});
+      const response = await fetch("https://api.anthropic.com/v1/messages", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-api-key": import.meta.env.VITE_ANTHROPIC_API_KEY,
+          "anthropic-version": "2023-06-01",
+          "anthropic-dangerous-direct-browser-access": "true",
+        },
+        body: JSON.stringify({
+          model: "claude-sonnet-4-20250514",
+          max_tokens: 1000,
+          system: SYSTEM_PROMPT,
+          messages: apiMessages,
+        }),
+      });
 
       const data = await response.json();
       const text = data.content?.map((b) => b.text || "").join("") || "No response received.";
@@ -206,21 +214,21 @@ const response = await fetch("https://api.anthropic.com/v1/messages", {
         apiUserMsg,
       ];
 
-const response = await fetch("https://api.anthropic.com/v1/messages", {
-  method: "POST",
-  headers: {
-    "Content-Type": "application/json",
-    "x-api-key": import.meta.env.VITE_ANTHROPIC_API_KEY,
-    "anthropic-version": "2023-06-01",
-    "anthropic-dangerous-direct-browser-access": "true",
-  },
-  body: JSON.stringify({
-    model: "claude-sonnet-4-20250514",
-    max_tokens: 1000,
-    system: SYSTEM_PROMPT,
-    messages: apiMessages,
-  }),
-});
+      const response = await fetch("https://api.anthropic.com/v1/messages", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-api-key": import.meta.env.VITE_ANTHROPIC_API_KEY,
+          "anthropic-version": "2023-06-01",
+          "anthropic-dangerous-direct-browser-access": "true",
+        },
+        body: JSON.stringify({
+          model: "claude-sonnet-4-20250514",
+          max_tokens: 1000,
+          system: SYSTEM_PROMPT,
+          messages: apiMessages,
+        }),
+      });
 
       const data = await response.json();
       const text = data.content?.map((b) => b.text || "").join("") || "No response.";
@@ -351,7 +359,6 @@ const response = await fetch("https://api.anthropic.com/v1/messages", {
           height: calc(100vh - 65px);
         }
 
-        /* SIDEBAR */
         .sidebar {
           width: 280px;
           min-width: 280px;
@@ -374,7 +381,6 @@ const response = await fetch("https://api.anthropic.com/v1/messages", {
           margin-bottom: 8px;
         }
 
-        /* Drop Zone */
         .drop-zone {
           border: 1.5px dashed rgba(201,168,76,0.35);
           border-radius: 12px;
@@ -390,10 +396,7 @@ const response = await fetch("https://api.anthropic.com/v1/messages", {
           background: var(--gold-dim);
         }
 
-        .drop-zone-icon {
-          font-size: 28px;
-          margin-bottom: 8px;
-        }
+        .drop-zone-icon { font-size: 28px; margin-bottom: 8px; }
 
         .drop-zone-text {
           font-size: 12px;
@@ -407,11 +410,7 @@ const response = await fetch("https://api.anthropic.com/v1/messages", {
           margin-top: 6px;
         }
 
-        .file-list {
-          display: flex;
-          flex-direction: column;
-          gap: 6px;
-        }
+        .file-list { display: flex; flex-direction: column; gap: 6px; }
 
         .file-item {
           display: flex;
@@ -446,12 +445,7 @@ const response = await fetch("https://api.anthropic.com/v1/messages", {
         }
         .file-remove:hover { color: #e74c3c; }
 
-        /* Analysis Sections */
-        .section-btns {
-          display: flex;
-          flex-direction: column;
-          gap: 6px;
-        }
+        .section-btns { display: flex; flex-direction: column; gap: 6px; }
 
         .section-btn {
           display: flex;
@@ -476,10 +470,7 @@ const response = await fetch("https://api.anthropic.com/v1/messages", {
           color: var(--white);
         }
 
-        .section-btn:disabled {
-          opacity: 0.4;
-          cursor: not-allowed;
-        }
+        .section-btn:disabled { opacity: 0.4; cursor: not-allowed; }
 
         .section-btn.active {
           background: var(--gold-dim);
@@ -514,13 +505,7 @@ const response = await fetch("https://api.anthropic.com/v1/messages", {
           transform: none;
         }
 
-        /* CHAT AREA */
-        .chat-area {
-          flex: 1;
-          display: flex;
-          flex-direction: column;
-          overflow: hidden;
-        }
+        .chat-area { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
 
         .chat-messages {
           flex: 1;
@@ -549,11 +534,7 @@ const response = await fetch("https://api.anthropic.com/v1/messages", {
           color: var(--slate);
         }
 
-        .empty-icon {
-          font-size: 56px;
-          opacity: 0.6;
-          margin-bottom: 8px;
-        }
+        .empty-icon { font-size: 56px; opacity: 0.6; margin-bottom: 8px; }
 
         .empty-title {
           font-family: 'Cormorant Garamond', serif;
@@ -601,7 +582,6 @@ const response = await fetch("https://api.anthropic.com/v1/messages", {
           justify-content: center;
         }
 
-        /* Messages */
         .message {
           display: flex;
           flex-direction: column;
@@ -649,7 +629,6 @@ const response = await fetch("https://api.anthropic.com/v1/messages", {
           padding: 0 4px;
         }
 
-        /* Markdown styles */
         .md-h1 { font-family: 'Cormorant Garamond', serif; font-size: 24px; color: var(--white); margin: 16px 0 8px; }
         .md-h2 { font-family: 'Cormorant Garamond', serif; font-size: 20px; color: var(--gold-light); margin: 14px 0 6px; border-bottom: 1px solid rgba(201,168,76,0.15); padding-bottom: 6px; }
         .md-h3 { font-size: 14px; font-weight: 600; color: var(--white); margin: 12px 0 4px; letter-spacing: 0.02em; }
@@ -659,7 +638,6 @@ const response = await fetch("https://api.anthropic.com/v1/messages", {
         .md-code { background: rgba(201,168,76,0.1); border: 1px solid rgba(201,168,76,0.2); border-radius: 4px; padding: 1px 5px; font-family: monospace; font-size: 12px; color: var(--gold-light); }
         strong { color: var(--white); font-weight: 600; }
 
-        /* Loading */
         .loading-bubble {
           display: flex;
           align-items: center;
@@ -671,11 +649,7 @@ const response = await fetch("https://api.anthropic.com/v1/messages", {
           width: fit-content;
         }
 
-        .loading-text {
-          font-size: 12px;
-          color: var(--slate);
-          font-style: italic;
-        }
+        .loading-text { font-size: 12px; color: var(--slate); font-style: italic; }
 
         .dots span {
           display: inline-block;
@@ -694,7 +668,6 @@ const response = await fetch("https://api.anthropic.com/v1/messages", {
           40% { transform: translateY(-6px); opacity: 1; }
         }
 
-        /* Chat Input */
         .chat-input-area {
           padding: 20px 32px 24px;
           border-top: 1px solid rgba(201,168,76,0.1);
@@ -702,11 +675,7 @@ const response = await fetch("https://api.anthropic.com/v1/messages", {
           backdrop-filter: blur(12px);
         }
 
-        .input-row {
-          display: flex;
-          gap: 10px;
-          align-items: flex-end;
-        }
+        .input-row { display: flex; gap: 10px; align-items: flex-end; }
 
         .chat-input {
           flex: 1;
@@ -760,7 +729,6 @@ const response = await fetch("https://api.anthropic.com/v1/messages", {
       `}</style>
 
       <div className="app">
-        {/* HEADER */}
         <header className="header">
           <div className="logo">
             <div className="logo-mark">⚡</div>
@@ -776,9 +744,7 @@ const response = await fetch("https://api.anthropic.com/v1/messages", {
         </header>
 
         <div className="main">
-          {/* SIDEBAR */}
           <aside className="sidebar">
-            {/* Upload */}
             <div>
               <div className="sidebar-section-title">Documents</div>
               <div
@@ -815,7 +781,6 @@ const response = await fetch("https://api.anthropic.com/v1/messages", {
               )}
             </div>
 
-            {/* Full Analysis */}
             <div>
               <div className="sidebar-section-title">Full Analysis</div>
               <button
@@ -827,7 +792,6 @@ const response = await fetch("https://api.anthropic.com/v1/messages", {
               </button>
             </div>
 
-            {/* Section Deep-dives */}
             <div>
               <div className="sidebar-section-title">Deep Dive</div>
               <div className="section-btns">
@@ -846,7 +810,6 @@ const response = await fetch("https://api.anthropic.com/v1/messages", {
             </div>
           </aside>
 
-          {/* CHAT */}
           <div className="chat-area">
             <div className="chat-messages">
               {displayMessages.length === 0 ? (
@@ -897,7 +860,6 @@ const response = await fetch("https://api.anthropic.com/v1/messages", {
               <div ref={chatEndRef} />
             </div>
 
-            {/* Input */}
             <div className="chat-input-area">
               <div className="input-row">
                 <textarea
