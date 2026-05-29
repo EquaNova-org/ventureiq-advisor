@@ -38,34 +38,29 @@ function parseMarkdown(text) {
     );
 }
 
+import * as pdfjsLib from 'pdfjs-dist';
+pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.0.379/pdf.worker.min.js`;
+
 async function readFileAsText(file) {
-  return new Promise((resolve, reject) => {
-    if (file.type === "application/pdf") {
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        // For PDFs, we extract what we can as base64 and note it
-        // We'll send text extraction notice since we can't run pdfjs in artifacts
-        resolve(`[PDF File: ${file.name} — Content extracted below]\n` +
-          `File size: ${(file.size / 1024).toFixed(1)}KB\n` +
-          `Note: PDF text extracted for analysis.`);
-      };
-      reader.onerror = reject;
-      // Try reading as text first
-      const textReader = new FileReader();
-      textReader.onload = (e) => {
-        const text = e.target.result;
-        const cleaned = text.replace(/[^\x20-\x7E\n\r\t]/g, " ").replace(/\s+/g, " ");
-        resolve(`[PDF: ${file.name}]\n${cleaned.slice(0, 15000)}`);
-      };
-      textReader.onerror = () => resolve(`[PDF File: ${file.name} — unable to extract text]`);
-      textReader.readAsText(file);
-    } else {
-      const reader = new FileReader();
+  if (file.type === "application/pdf") {
+    const arrayBuffer = await file.arrayBuffer();
+    const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+    let fullText = "";
+    for (let i = 1; i <= pdf.numPages; i++) {
+      const page = await pdf.getPage(i);
+      const content = await page.getTextContent();
+      const pageText = content.items.map((item) => item.str).join(" ");
+      fullText += `\n[Page ${i}]\n${pageText}`;
+    }
+    return `[PDF: ${file.name}]\n${fullText}`;
+  } else {
+    const reader = new FileReader();
+    return new Promise((resolve, reject) => {
       reader.onload = (e) => resolve(e.target.result);
       reader.onerror = reject;
       reader.readAsText(file);
-    }
-  });
+    });
+  }
 }
 
 export default function StartupAdvisor() {
